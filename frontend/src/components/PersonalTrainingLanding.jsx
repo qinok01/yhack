@@ -8,8 +8,8 @@ const PersonalTrainerLanding = () => {
   return (
     <div className="bg-customLightGray min-h-screen w-full flex flex-col mx-auto font-roboto">
       <div className="flex-grow container mx-auto px-4 lg:px-8">
-        <NavBar />
         <main className="max-w-6xl mx-auto py-12">
+        <NavBar />
           <div className="flex flex-col lg:flex-row items-center justify-between mb-20">
             <div className="lg:w-1/2 mb-12 lg:mb-0">
             <h1 className="text-5xl font-bold mb-6 leading-tight">

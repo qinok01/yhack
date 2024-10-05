@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './tailwind.css';
 import './index.css';
 import PersonalTrainerLanding from './components/PersonalTrainingLanding';
-import FitnessRoom from './components/FitnessRoom';
+import FitnessRoom from './components/FitnessRoom(depreceated)';
 
 const App = () => {
   return (
