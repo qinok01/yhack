@@ -2,6 +2,7 @@ import React from 'react';
 import { Play, Flame, ChevronsUp, Heart, BarChart2, MessageSquare, User, Dumbbell, Watch } from 'lucide-react';
 import NavBar from './NavBar';
 import coach from '../assets/coach.png';
+import { Link } from 'react-router-dom';
 
 const PersonalTrainerLanding = () => {
   return (
@@ -19,9 +20,11 @@ const PersonalTrainerLanding = () => {
               your living room
             </h1>
               <p className="text-gray-600 text-xl mb-8">Leveraging AI to bring personal AI Personal Training to everyone</p>
+              <Link to="/fitness">
               <button className="bg-custom-linear text-white px-12 py-4 rounded-full text-xl font-semibold hover:bg-customeBlue transition duration-300 shadow-lg mx-auto">
                 Start Fitness
               </button>
+              </Link>
             </div>
             
             <div className="lg:w-1/2 w-full max-w-md">
@@ -156,9 +159,12 @@ const BreakCard = () => {
 
       {/* Start Workout Button */}
       <div className="flex justify-center">
+      <Link to="/fitness">
+
         <button className="bg-blue-600 text-white py-3 px-6 rounded-full font-semibold hover:bg-blue-700 transition duration-300 shadow-lg">
           Start Fitness
         </button>
+      </Link>
       </div>
     </div>
   );
@@ -221,9 +227,11 @@ const MotivationalCard = () => {
 
   {/* Start Workout Button */}
   <div className="flex justify-center">
+  <Link to="/fitness">
     <button className="bg-blue-600 text-white py-3 px-6 rounded-full font-semibold hover:bg-blue-700 transition duration-300 shadow-lg">
       Start Fitness
     </button>
+  </Link>
   </div>
 </div>
 

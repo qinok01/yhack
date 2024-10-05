@@ -1,5 +1,6 @@
 import React from 'react';
 import Fivilogo from '../assets/fivi-logo.png'; // Adjust the path to your image
+import { Link } from 'react-router-dom';
 
 const NavBar = () => {
   return (
@@ -12,9 +13,11 @@ const NavBar = () => {
 
         {/* Button Section */}
         <div>
-          <button className="bg-custom-linear hover:bg-blue-700 text-white py-2 px-2 rounded-xl font-afacad">
-            Try it out
-          </button>
+          <Link to="/fitness">
+            <button className="bg-custom-linear hover:bg-blue-700 text-white py-2 px-2 rounded-xl font-afacad">
+              Try it out
+            </button>
+          </Link>
         </div>
       </div>
     </nav>
