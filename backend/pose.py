@@ -1,9 +1,13 @@
 import cv2
 import mediapipe as mp
 import math
+from flask import Flask, Response
+from flask_cors import CORS
 
-class PoseDetector() :
-    
+app = Flask(__name__)
+CORS(app)
+
+class PoseDetector:
     def __init__(self, mode=False, complexity=1, smooth_landmarks=True,
                  enable_segmentation=False, smooth_segmentation=True,
                  detectionCon=0.5, trackCon=0.5):
@@ -22,14 +26,13 @@ class PoseDetector() :
                                      self.enable_segmentation, self.smooth_segmentation,
                                      self.detectionCon, self.trackCon)
         
-        
-    def findPose (self, img, draw=True):
+    def findPose(self, img, draw=True):
         imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         self.results = self.pose.process(imgRGB)
         
         if self.results.pose_landmarks:
             if draw:
-                self.mpDraw.draw_landmarks(img,self.results.pose_landmarks,
+                self.mpDraw.draw_landmarks(img, self.results.pose_landmarks,
                                            self.mpPose.POSE_CONNECTIONS)
                 
         return img
@@ -38,9 +41,7 @@ class PoseDetector() :
         self.lmList = []
         if self.results.pose_landmarks:
             for id, lm in enumerate(self.results.pose_landmarks.landmark):
-                # finding height, width of the image printed
                 h, w, c = img.shape
-                # Determining the pixels of the landmarks
                 cx, cy = int(lm.x * w), int(lm.y * h)
                 self.lmList.append([id, cx, cy])
                 if draw:
@@ -48,12 +49,10 @@ class PoseDetector() :
         return self.lmList
         
     def findAngle(self, img, p1, p2, p3, draw=True):   
-        # Get the landmarks
         x1, y1 = self.lmList[p1][1:]
         x2, y2 = self.lmList[p2][1:]
         x3, y3 = self.lmList[p3][1:]
         
-        #Calculate Angle
         angle = math.degrees(math.atan2(y3-y2, x3-x2) - 
                              math.atan2(y1-y2, x1-x2))
         if angle < 0:
@@ -62,13 +61,10 @@ class PoseDetector() :
                 angle = 360 - angle
         elif angle > 180:
             angle = 360 - angle
-        # print(angle)
         
-        # Draw
         if draw:
             cv2.line(img, (x1, y1), (x2, y2), (255,255,255), 3)
             cv2.line(img, (x3, y3), (x2, y2), (255,255,255), 3)
-
             
             cv2.circle(img, (x1, y1), 5, (0,0,255), cv2.FILLED)
             cv2.circle(img, (x1, y1), 15, (0,0,255), 2)
@@ -80,23 +76,24 @@ class PoseDetector() :
             cv2.putText(img, str(int(angle)), (x2-50, y2+50), 
                         cv2.FONT_HERSHEY_PLAIN, 2, (0,0,255), 2)
         return angle
-        
 
-def main():
+def generate_frames():
     detector = PoseDetector()
     cap = cv2.VideoCapture(0)
-
-    # Frame capture loop
-    while cap.isOpened():
-        ret, img = cap.read() 
-        if ret:    
-            img = detector.findPose(img)
-            cv2.imshow('Pose Detection', img)
-        if cv2.waitKey(10) & 0xFF == ord('q'):
+    while True:
+        ret, img = cap.read()
+        if not ret:
             break
-            
-    cap.release()
-    cv2.destroyAllWindows()
-    
+        img = detector.findPose(img)
+        ret, buffer = cv2.imencode('.jpg', img)
+        frame = buffer.tobytes()
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+
+@app.route('/video_feed')
+def video_feed():
+    return Response(generate_frames(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
 if __name__ == "__main__":
-    main()
+    app.run(host='0.0.0.0', port=5001, debug=True)
