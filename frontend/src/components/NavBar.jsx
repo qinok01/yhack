@@ -1,21 +1,27 @@
 import React from 'react';
 import Fivilogo from '../assets/fivi-logo.png'; // Adjust the path to your image
-
-const NavBar = () => {
+import { Link } from 'react-router-dom';
+const NavBar = ({ showButton  = true}) => {
   return (
-    <nav className="p-4 ">
+    <nav className="px-4 py-2">
       <div className="container mx-auto flex justify-between items-center ">
         {/* Logo Section */}
+        <Link to="/">
         <div>
           <img src={Fivilogo} alt="Fision Logo" className="h-16 w-auto" />
         </div>
+        </Link>
 
         {/* Button Section */}
-        <div>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-2 rounded-lg font-roboto">
-            Try it out
-          </button>
-        </div>
+        {showButton && (
+          <div>
+            <Link to="/fitness">
+              <button className="bg-custom-linear hover:bg-blue-700 text-white py-2 px-2 rounded-xl font-afacad">
+                Try it out
+              </button>
+            </Link>
+          </div>
+        )}
       </div>
     </nav>
   );
