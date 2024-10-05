@@ -1,15 +1,14 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
-import Test from './components/test'
+import React from 'react';
+import './tailwind.css'
+import "./index.css"
+import PersonalTrainerLanding from './components/PersonalTrainingLanding';
 
-function App() {
+const App = () => {
   return (
-    <>
-        <Test/>
-    </>
-  )
+    <div>
+      <PersonalTrainerLanding/>
+    </div>
+  );
 }
 
-export default App
+export default App;
