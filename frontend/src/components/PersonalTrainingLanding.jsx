@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Heart, BarChart2, MessageSquare, User, Dumbbell, Watch } from 'lucide-react';
+import { Play, Activity, Heart, BarChart2, MessageSquare, User, Dumbbell, Watch } from 'lucide-react';
 import NavBar from './NavBar';
 
 const PersonalTrainerLanding = () => {
@@ -17,8 +17,8 @@ const PersonalTrainerLanding = () => {
               <br />
               your living room
             </h1>
-              <p className="text-gray-600 text-xl mb-8">Leveraging AI to bring personal PT coach to everyone</p>
-              <button className="bg-custom-linear text-white px-8 py-3 rounded-full text-lg font-semibold hover:bg-customeBlue transition duration-300 shadow-lg">
+              <p className="text-gray-600 text-xl mb-8">Leveraging AI to bring personal AI Personal Training to everyone</p>
+              <button className="bg-custom-linear text-white px-12 py-4 rounded-full text-xl font-semibold hover:bg-customeBlue transition duration-300 shadow-lg mx-auto">
                 Start Fitness
               </button>
             </div>
@@ -26,15 +26,15 @@ const PersonalTrainerLanding = () => {
             <div className="lg:w-1/2 w-full max-w-md">
               <div className="bg-white p-8 rounded-2xl shadow-2xl">
                 <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-2xl font-bold">Fitness Profile</h3>
+                  <h3 className="text-2xl font-bold">Break Into Fitness</h3>
                   <div className="bg-blue-100 p-2 rounded-full">
-                    <User className="text-customeBlue" size={32} />
+                    <Activity className="text-customeBlue" size={32} />
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-6 mb-8">
-                  <FitnessIcon Icon={User} label="Profile" />
-                  <FitnessIcon Icon={Dumbbell} label="Workouts" />
-                  <FitnessIcon Icon={Watch} label="Progress" />
+                <div className="grid grid-cols-3 gap-9 mb-8">
+                  <FitnessIcon Icon={User} label="Real Feedback" />
+                  <FitnessIcon Icon={Dumbbell} label="Real Workouts" />
+                  <FitnessIcon Icon={Watch} label="Real Progress" />
                 </div>
                 <div className="flex justify-between space-x-4">
                   <button className="flex-1 bg-customeBlue text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-300">
@@ -46,6 +46,12 @@ const PersonalTrainerLanding = () => {
                 </div>
               </div>
             </div>
+          
+            
+          
+          
+          
+          
           </div>
           
           <section className="pb-6">
@@ -99,5 +105,47 @@ const FeatureCard = ({ title, description, Icon, iconColor }) => (
     <p className="text-gray-600">{description}</p>
   </div>
 );
+
+
+
+const MotivationalCard = () => {
+  return (
+    <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full">
+      {/* Card Title */}
+      <h3 className="text-2xl font-bold mb-4 text-gray-800">Stay Motivated</h3>
+      
+      {/* Daily Quote */}
+      <p className="text-lg italic text-gray-600 mb-6">
+        "Break into fitness, start working towards a healthy lifestyle!"
+      </p>
+
+      {/* Streak Counter */}
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center">
+          <div className="bg-blue-100 p-3 rounded-full">
+            <Fire className="text-red-500" size={32} />
+          </div>
+          <div className="ml-4">
+            <p className="text-xl font-bold text-gray-800">5 Day Streak</p>
+            <p className="text-sm text-gray-500">Keep going!</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Start Workout Button */}
+      <div className="flex justify-center">
+        <button className="bg-blue-600 text-white py-3 px-6 rounded-full font-semibold hover:bg-blue-700 transition duration-300 shadow-lg">
+          Start Workout
+        </button>
+      </div>
+    </div>
+  );
+};
+
+
+
+
+
+
 
 export default PersonalTrainerLanding;
