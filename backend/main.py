@@ -73,20 +73,28 @@ class PoseDetector:
         return angle
 
 def get_joint_angles(detector, img):
-    lmList = detector.findPosition(img)
-    if not lmList:
+    lmDict = detector.findPosition(img)
+    if not lmDict:
         raise ValueError("No pose detected")
     return {
         'left_shoulder_angle': detector.findAngle(img, 13, 11, 23, draw=False),
         'right_shoulder_angle': detector.findAngle(img, 14, 12, 24, draw=False),
-        'left_hip_angle': detector.findAngle(img, 11, 23, 25, draw=False),
-        'right_hip_angle': detector.findAngle(img, 12, 24, 26, draw=False),
+        'left_hip_angle_squat': detector.findAngle(img, 11, 23, 25, draw=False),
+        'right_hip_angle_squat': detector.findAngle(img, 12, 24, 26, draw=False),
         'left_knee_angle': detector.findAngle(img, 23, 25, 27, draw=False),
         'right_knee_angle': detector.findAngle(img, 24, 26, 28, draw=False),
         'left_ankle_angle': detector.findAngle(img, 25, 27, 31, draw=False),
         'right_ankle_angle': detector.findAngle(img, 26, 28, 32, draw=False),
         'back_angle': detector.findAngle(img, 7, 11, 23, draw=False),  # Using left side for back angle
+        'left_elbow_angle': detector.findAngle(img, 11, 13, 15, draw=False),
+        'right_elbow_angle': detector.findAngle(img, 12, 14, 16, draw=False),
+        'left_hand_to_shoulder_angle': detector.findAngle(img, 15, 13, 11, draw=False),
+        'right_hand_to_shoulder_angle': detector.findAngle(img, 16, 14, 12, draw=False),
+        # Hip angles for pushups
+        'left_hip_angle_pushup': detector.findAngle(img, 11, 23, 27, draw=False),
+        'right_hip_angle_pushup': detector.findAngle(img, 12, 24, 28, draw=False)
     }
+
 
 def analyze_current_exercise(detector, img):
     global current_exercise
@@ -209,6 +217,8 @@ def generate_frames(view_mode):
 
 @app.route('/video_feed/<view_mode>')
 def video_feed(view_mode):
+    if view_mode not in ['split', 'video', 'webcam']:
+        view_mode = 'split'  # Default to 'split' if invalid view_mode is provided
     return Response(generate_frames(view_mode), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/current_exercise', methods=['POST'])

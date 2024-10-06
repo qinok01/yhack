@@ -57,10 +57,40 @@ const ExercisePlayer = ({ isVisible }) => {
   const switchVideo = (index) => {
     if (index !== currentVideoIndex) {
       setFadingTo(index);
-      setTimeout(() => {
-        setCurrentVideoIndex(index);
-        setFadingTo(null);
-      }, 330);
+  
+      // Get the label of the selected exercise
+      const selectedExercise = videos[index].label;
+  
+      // Send a request to the backend to update the current exercise
+      fetch('http://localhost:5005/current_exercise', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ exercise: selectedExercise }),
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error('Failed to update current exercise');
+          }
+          return response.json();
+        })
+        .then((data) => {
+          console.log('Exercise updated on backend:', data);
+  
+          setTimeout(() => {
+            setCurrentVideoIndex(index);
+            setFadingTo(null);
+          }, 330);
+        })
+        .catch((error) => {
+          console.error('Error updating current exercise:', error);
+          // Optionally handle the error, e.g., show a message to the user
+          setTimeout(() => {
+            setCurrentVideoIndex(index);
+            setFadingTo(null);
+          }, 330);
+        });
     }
   };
 
