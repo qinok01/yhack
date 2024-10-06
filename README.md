@@ -63,17 +63,17 @@ npm install
 npm run dev
 
 ### Run backend servers
-cd .. 
-cd backend
-python main.py
-python query.py
-python find_keyword.py
-python realtime.py
+- cd .. 
+- cd backend
+- python main.py
+- python query.py
+- python find_keyword.py
+- python realtime.py
 
 ### Open Web App
-Open your browser and navigate to http://localhost:5173
-Allow camera and microphone access when prompted
-Follow on-screen instructions to begin your AI-guided workout
+- Open your browser and navigate to http://localhost:5173
+- Allow camera and microphone access when prompted
+- Follow on-screen instructions to begin your AI-guided workout
 
 ## Future Enhancements
 
