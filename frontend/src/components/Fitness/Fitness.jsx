@@ -9,40 +9,21 @@ const videos = [
     processed: '/processed_f_fivi_side_squats.mp4', 
     unprocessed: '/f_fivi_side_squats.mp4', 
     label: 'Squats',
-    icon: (
-      <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none">
-        <path d="M7 17L12 22L17 17" />
-        <path d="M12 22L12 10" />
-        <circle cx="12" cy="6" r="4" />
-      </svg>
-    )
+    icon: '/squat icon.png' 
   },
   { 
     id: 2, 
     processed: '/processed_f_fivi_pushups.mp4', 
     unprocessed: '/f_fivi_pushups.mp4', 
     label: 'Pushups',
-    icon: (
-      <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none">
-        <path d="M4 18L20 18" />
-        <path d="M5 14L19 14" />
-        <circle cx="8" cy="9" r="3" />
-        <circle cx="16" cy="9" r="3" />
-      </svg>
-    )
+    icon: '/pushup icon.png' 
   },
   { 
     id: 3, 
     processed: '/processed_f_fivi_plank.mp4', 
     unprocessed: '/f_fivi_plank.mp4', 
     label: 'Plank',
-    icon: (
-      <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none">
-        <path d="M3 12H21" />
-        <path d="M6 7V17" />
-        <path d="M18 7V17" />
-      </svg>
-    )
+    icon: '/plank icon.png' 
   },
 ];
 
@@ -134,7 +115,11 @@ const ExercisePlayer = ({ isVisible }) => {
             onClick={() => switchVideo(index)}
             aria-label={video.label}
           >
-            {video.icon}
+            <img 
+              src={video.icon} 
+              alt={`${video.label} icon`} 
+              className={`icon ${index === currentVideoIndex ? 'active' : ''}`}
+            />
           </button>
         ))}
       </div>
@@ -145,11 +130,11 @@ const ExercisePlayer = ({ isVisible }) => {
   );
 };
 
-const WebcamStream = ({ isVisible }) => {
+const WebcamStream = ({ isVisible, viewMode }) => {
   return (
     <div className={`webcam-stream ${isVisible ? '' : 'hidden'}`}>
       <img 
-        src="http://localhost:5001/video_feed"
+        src={`http://localhost:5005/video_feed/${viewMode}`}
         alt="Pose Detection Stream"
       />
     </div>

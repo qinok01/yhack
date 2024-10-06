@@ -103,7 +103,18 @@
 
 .video-button.active {
   background-color: #3b82f6;
-  color: white;
+  color: white; 
+}
+
+
+.video-button .icon {
+  width: 24px;
+  height: 24px;
+  filter: brightness(0) invert(0); 
+}
+
+.video-button.active .icon {
+  filter: brightness(0) invert(1); 
 }
 
 .control-buttons {

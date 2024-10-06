@@ -1,55 +1,166 @@
-from flask import Flask, request, jsonify
-import requests
+from flask import Flask, request, jsonify, Response
+import mediapipe as mp
+from flask_cors import CORS
+import cv2
+import math
 from exercises.squat import analyze_squat
 from exercises.pushup import analyze_pushup
 from exercises.plank import analyze_plank
+
 app = Flask(__name__)
+CORS(app)
 
 # Configuration
 SERVER_PORT = 5005
-OUTPUT_URL = 'http://localhost:8080/prompt'
-HEADERS = {'Content-Type': 'application/json'}
+current_exercise = 'Squats'  # Default exercise
 
-@app.route('/analyze/<exercise_type>', methods=['POST'])
-def analyze_exercise(exercise_type):
+class PoseDetector:
+    def __init__(self):
+        self.mpDraw = mp.solutions.drawing_utils
+        self.mpPose = mp.solutions.pose
+        self.pose = self.mpPose.Pose(static_image_mode=False, model_complexity=1, 
+                                     smooth_landmarks=True, min_detection_confidence=0.5, 
+                                     min_tracking_confidence=0.5)
+
+    def findPose(self, img):
+        imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        self.results = self.pose.process(imgRGB)
+        if self.results.pose_landmarks:
+            self.mpDraw.draw_landmarks(
+                img, self.results.pose_landmarks, self.mpPose.POSE_CONNECTIONS,
+                landmark_drawing_spec=self.mpDraw.DrawingSpec(color=(0, 0, 0), thickness=1, circle_radius=1),
+                connection_drawing_spec=self.mpDraw.DrawingSpec(color=(255, 255, 255), thickness=2)
+            )
+            for landmark in self.results.pose_landmarks.landmark:
+                h, w, _ = img.shape
+                cx, cy = int(landmark.x * w), int(landmark.y * h)
+                cv2.circle(img, (cx, cy), 10, (0, 0, 255), 2)  # Red outer circle
+                cv2.circle(img, (cx, cy), 5, (0, 255, 0), cv2.FILLED)  # Green inner circle
+        return img
+
+    def findPosition(self, img):
+        self.lmList = []
+        if self.results.pose_landmarks:
+            for id, lm in enumerate(self.results.pose_landmarks.landmark):
+                h, w, _ = img.shape
+                cx, cy = int(lm.x * w), int(lm.y * h)
+                self.lmList.append([id, cx, cy])
+        return self.lmList
+
+    def findAngle(self, img, p1, p2, p3, draw=True):
+        if len(self.lmList) < max(p1, p2, p3):
+            return 0
+
+        coords = [(self.lmList[p][1], self.lmList[p][2]) for p in [p1, p2, p3]]
+        x1, y1 = coords[0]
+        x2, y2 = coords[1]
+        x3, y3 = coords[2]
+
+        angle = math.degrees(math.atan2(y3 - y2, x3 - x2) - math.atan2(y1 - y2, x1 - x2))
+        angle = angle if angle >= 0 else angle + 360
+        angle = min(angle, 360 - angle)
+
+        if draw:
+            cv2.line(img, (x1, y1), (x2, y2), (255, 255, 255), 3)
+            cv2.line(img, (x3, y3), (x2, y2), (255, 255, 255), 3)
+            for x, y in coords:
+                cv2.circle(img, (x, y), 10, (0, 0, 255), cv2.FILLED)
+            cv2.putText(img, f"{int(angle)}", (x2 - 50, y2 + 50), 
+                        cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 2)
+        return angle
+
+def get_joint_angles(detector, img):
+    lmList = detector.findPosition(img)
+    if not lmList:
+        raise ValueError("No pose detected")
+    return {
+        'left_shoulder_angle': detector.findAngle(img, 13, 11, 23, draw=False),
+        'right_shoulder_angle': detector.findAngle(img, 14, 12, 24, draw=False),
+        'left_hip_angle': detector.findAngle(img, 11, 23, 25, draw=False),
+        'right_hip_angle': detector.findAngle(img, 12, 24, 26, draw=False),
+        'left_knee_angle': detector.findAngle(img, 23, 25, 27, draw=False),
+        'right_knee_angle': detector.findAngle(img, 24, 26, 28, draw=False),
+        'left_ankle_angle': detector.findAngle(img, 25, 27, 31, draw=False),
+        'right_ankle_angle': detector.findAngle(img, 26, 28, 32, draw=False),
+        'back_angle': detector.findAngle(img, 7, 11, 23, draw=False),  # Using left side for back angle
+    }
+
+def analyze_current_exercise(detector, img):
+    global current_exercise
     try:
-        data = request.json
-        joint_angles = data.get('joint_angles', {})
-        user_query = data.get('user_query', '')
-
-        if exercise_type == 'squat':
-            form_feedback, feedback_summary = analyze_squat(joint_angles)
-        elif exercise_type == 'pushup':
-            form_feedback, feedback_summary = analyze_pushup(joint_angles)
-        elif exercise_type == 'plank':
-            form_feedback, feedback_summary = analyze_plank(joint_angles)
+        joint_angles = get_joint_angles(detector, img)
+        if current_exercise == 'Squats':
+            feedback, debug_info, per, bar = analyze_squat(joint_angles)
+        elif current_exercise == 'Pushups':
+            feedback, debug_info, per, bar = analyze_pushup(joint_angles)
+        elif current_exercise == 'Plank':
+            feedback, debug_info, per, bar = analyze_plank(joint_angles)
         else:
-            return jsonify({"error": "Unsupported exercise type"}), 400
+            feedback, debug_info, per, bar = "Select an exercise.", "", 0, 0
+        
+        if feedback:
+            print(f"Exercise Feedback: {feedback}")
+        return feedback, debug_info, per, bar
+    except ValueError:
+        return "No pose detected.", "", 0, 0
 
-        prompt = f"""
-        The user asked: "{user_query}"
-        {feedback_summary}
-        Instructions for response:
-        1. If the user asks specifically about one feature, only provide the relevant feedback for that feature.
-        2. If the user asks a general question about their form, provide feedback for all the features analyzed.
-        3. If the user asks a question unrelated to form analysis, ignore the form feedback and answer accordingly.
-        """
+def generate_frames(view_mode):
+    detector = PoseDetector()
+    cap = cv2.VideoCapture(0)
+    while True:
+        success, img = cap.read()
+        if not success:
+            break
+        img = detector.findPose(img)
+        feedback, debug_info, per, bar = analyze_current_exercise(detector, img)
+        
+        # Calculate progress bar dimensions and position
+        bar_width = 30
+        bar_max_height = img.shape[0] - 100  # Leave some space at top and bottom
+        bar_current_height = int(bar_max_height * (per / 100))
+        
+        # Adjust bar position based on view mode
+        if view_mode == 'split':
+            bar_x = img.shape[1] // 2 - bar_width - 20  # 20 pixels padding from center
+        else:  # full view
+            bar_x = img.shape[1] - bar_width - 20  # 20 pixels padding from right edge
+        
+        # Display feedback
+        cv2.putText(img, feedback, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        
+        # Display debug info
+        cv2.putText(img, debug_info, (10, img.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        
+        # Draw progress bar
+        if current_exercise in ['Squats', 'Pushups', 'Plank']:
+            # Draw the background of the progress bar
+            cv2.rectangle(img, (bar_x, 50), (bar_x + bar_width, 50 + bar_max_height), (0, 255, 0), 3)
+            
+            # Draw the filled part of the progress bar
+            cv2.rectangle(img, (bar_x, 50 + bar_max_height - bar_current_height), 
+                          (bar_x + bar_width, 50 + bar_max_height), (0, 255, 0), cv2.FILLED)
+            
+            # Display the percentage
+            cv2.putText(img, f'{int(per)}%', (bar_x, 40), 
+                        cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 2)
+        
+        ret, buffer = cv2.imencode('.jpg', img)
+        frame = buffer.tobytes()
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
-        output_data = {
-            'prompt': prompt,
-            'form_feedback': form_feedback,
-            'feedback_summary': feedback_summary
-        }
+# Update the video_feed route to accept view_mode
+@app.route('/video_feed/<view_mode>')
+def video_feed(view_mode):
+    return Response(generate_frames(view_mode), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-        response = requests.post(OUTPUT_URL, headers=HEADERS, json=output_data)
 
-        if response.status_code == 200:
-            return jsonify({"message": "Analysis completed and sent to output server", "data": output_data}), 200
-        else:
-            return jsonify({"error": f"Failed to send data to the output server. Status code: {response.status_code}"}), 500
+@app.route('/current_exercise', methods=['POST'])
+def current_exercise_route():
+    global current_exercise
+    current_exercise = request.json.get('exercise', 'Squats')
+    print(f"Exercise changed to: {current_exercise}")  # Console log the exercise change
+    return jsonify({"message": "Exercise updated", "current_exercise": current_exercise}), 200
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(port=SERVER_PORT, debug=True)
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=SERVER_PORT, debug=True)
