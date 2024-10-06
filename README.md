@@ -68,7 +68,7 @@ cd backend
 python main.py
 python query.py
 python find_keyword.py
-python text-to-speech.py
+python realtime.py
 
 ### Open Web App
 Open your browser and navigate to http://localhost:5173
