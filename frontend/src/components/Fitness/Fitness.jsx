@@ -164,7 +164,7 @@ const WebcamStream = ({ isVisible, viewMode }) => {
   return (
     <div className={`webcam-stream ${isVisible ? '' : 'hidden'}`}>
       <img 
-        src={`http://localhost:5005/video_feed/${viewMode}`}
+        src={`http://localhost:5001/video_feed/${viewMode}`}
         alt="Pose Detection Stream"
       />
     </div>

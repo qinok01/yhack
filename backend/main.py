@@ -6,12 +6,15 @@ import math
 from exercises.squat import analyze_squat
 from exercises.pushup import analyze_pushup
 from exercises.plank import analyze_plank
+import requests
+import json
+import time
 
 app = Flask(__name__)
 CORS(app)
 
 # Configuration
-SERVER_PORT = 5005
+SERVER_PORT = 5001
 current_exercise = 'Squats'  # Default exercise
 
 class PoseDetector:
@@ -112,9 +115,54 @@ def analyze_current_exercise(detector, img):
     except ValueError:
         return "No pose detected.", "", 0, 0
 
+# Global variables for video capture and pose detector
+cap = None
+detector = None
+
+def initialize_capture():
+    global cap, detector
+    if cap is None:
+        cap = cv2.VideoCapture(0)
+    if detector is None:
+        detector = PoseDetector()
+
+@app.route('/start_capture', methods=['POST'])
+def start_capture():
+    global current_exercise, cap, detector
+    try:
+        initialize_capture()
+        
+        data = request.json
+        user_query = data.get('user_query', '')
+
+        # Capture a frame from the video feed
+        success, img = cap.read()
+        if not success:
+            return jsonify({"error": "Failed to capture video frame"}), 500
+
+        img = detector.findPose(img)
+        payload = {
+            "joint_angles": get_joint_angles(detector, img),
+            "user_query": user_query
+        }
+        
+        try:
+            response = requests.post('http://localhost:5005/analyze', headers={"Content-Type": "application/json"}, json=payload)
+            response.raise_for_status()
+            print("Payload sent to endpoint:")
+            print(json.dumps(payload, indent=4))
+            return jsonify(response.json())
+        except requests.RequestException as e:
+            return jsonify({"error": f"Failed to send data to analysis endpoint: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
 def generate_frames(view_mode):
-    detector = PoseDetector()
-    cap = cv2.VideoCapture(0)
+    global cap, detector
+    initialize_capture()
+    
+    last_request_time = time.time()
+    
     while True:
         success, img = cap.read()
         if not success:
@@ -122,13 +170,51 @@ def generate_frames(view_mode):
         img = detector.findPose(img)
         feedback, debug_info, per, bar = analyze_current_exercise(detector, img)
 
+        # Calculate progress bar dimensions and position
+        bar_width = 30
+        bar_max_height = img.shape[0] - 100
+        bar_current_height = int(bar_max_height * (per / 100))
+
+        # Adjust bar position based on view mode
+        if view_mode == 'split':
+            bar_x = img.shape[1] // 2 - bar_width - 20
+        else:  # full view
+            bar_x = img.shape[1] - bar_width - 20
+
+        # Display feedback and debug info
+        cv2.putText(img, feedback, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        cv2.putText(img, debug_info, (10, img.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+        # Draw progress bar
+        if current_exercise in ['Squats', 'Pushups', 'Plank']:
+            cv2.rectangle(img, (bar_x, 50), (bar_x + bar_width, 50 + bar_max_height), (0, 255, 0), 3)
+            cv2.rectangle(img, (bar_x, 50 + bar_max_height - bar_current_height), 
+                          (bar_x + bar_width, 50 + bar_max_height), (0, 255, 0), cv2.FILLED)
+            cv2.putText(img, f'{int(per)}%', (bar_x, 40), 
+                        cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 2)
+
+        # Send POST request every 30 seconds
+        current_time = time.time()
+        if current_time - last_request_time >= 30:
+            prompt = f"The current exercise is: {current_exercise} The feedback for {current_exercise} is: {feedback}"
+            payload = {"prompt": prompt, "exercise": current_exercise}
+            try:
+                response = requests.post('http://localhost:8080/prompt', 
+                                         headers={"Content-Type": "application/json"}, 
+                                         json=payload, 
+                                         timeout=5)  # 5 seconds timeout
+                response.raise_for_status()
+                print(f"Sent POST request to 8080/prompt: {payload}")
+            except requests.RequestException as e:
+                print(f"Failed to send POST request: {str(e)}")
+            
+            last_request_time = current_time
+
         ret, buffer = cv2.imencode('.jpg', img)
         frame = buffer.tobytes()
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
-# Update the video_feed route to accept view_mode
-@app.route('/video_feed', defaults={'view_mode': 'split'})
 @app.route('/video_feed/<view_mode>')
 def video_feed(view_mode):
     if view_mode not in ['split', 'video', 'webcam']:

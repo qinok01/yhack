@@ -4,7 +4,6 @@ import threading
 from vosk import Model, KaldiRecognizer
 import json
 import requests
-import re
 import os
 import wget
 import zipfile
@@ -12,6 +11,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import time
 import numpy as np
+from collections import deque
 
 load_dotenv()
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
@@ -22,12 +22,15 @@ CATEGORIES = ["coherent_english", "fitness_form", "incoherent"]
 # Constants for audio processing
 RATE = 16000
 CHUNK = 1024
-MIN_PHRASE_LENGTH = 3  # Minimum number of words to process
-SILENCE_THRESHOLD = 100  # Adjust this value based on your microphone and environment
-MIN_CONFIDENCE_THRESHOLD = 0.5  # Minimum confidence score for recognized words
+MIN_PHRASE_LENGTH = 3
+SILENCE_THRESHOLD = 500
+MIN_CONFIDENCE_THRESHOLD = 0.7
+SLIDING_WINDOW_SIZE = 5
+END_OF_SPEECH_SILENCE_DURATION = 1.0  # seconds of silence to mark end of speech
+PROCESSING_TIMEOUT = 5.0  # seconds to wait before processing anyway
 
 def download_model():
-    model_url = "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip"
+    model_url = "https://alphacephei.com/vosk/models/vosk-model-en-us-0.22.zip"
     model_path = "model"
     zip_path = "model.zip"
 
@@ -48,8 +51,16 @@ def download_model():
         print("Vosk model already exists.")
 
 def is_silence(audio_chunk):
-    """Check if the audio chunk is silence."""
-    return np.max(np.abs(np.frombuffer(audio_chunk, dtype=np.int16))) < SILENCE_THRESHOLD
+    """Improved silence detection using RMS with safeguards against invalid values."""
+    audio_array = np.frombuffer(audio_chunk, dtype=np.int16).astype(np.float32)
+    if len(audio_array) == 0:
+        return True
+    squared = np.square(audio_array)
+    mean_squared = np.mean(squared)
+    if mean_squared <= 0:
+        return True
+    rms = np.sqrt(mean_squared)
+    return rms < SILENCE_THRESHOLD
 
 def audio_stream(q):
     p = pyaudio.PyAudio()
@@ -68,8 +79,7 @@ def audio_stream(q):
         while True:
             try:
                 data = stream.read(CHUNK, exception_on_overflow=False)
-                if not is_silence(data):
-                    q.put(data)
+                q.put((data, time.time()))  # Add timestamp to each chunk
             except Exception as e:
                 print(f"Error reading audio stream: {e}")
     except KeyboardInterrupt:
@@ -79,17 +89,17 @@ def audio_stream(q):
         stream.close()
         p.terminate()
 
-def trigger_action(category, text, joint_angles):
+def trigger_action(category, text):
     action_map = {
         "fitness_form": {
-            "url": "http://localhost:5005/analyze",
+            "url": "http://localhost:5001/start_capture",
             "headers": {"Content-Type": "application/json"},
-            "payload": lambda t, j: {"category": "fitness_form", "user_query": t, "joint_angles": j}
+            "payload": lambda t: {"user_query": t}
         },
         "coherent_english": {
             "url": "http://localhost:8080/prompt",
             "headers": {"Content-Type": "application/json"},
-            "payload": lambda t, _: {"prompt": t}
+            "payload": lambda t: {"prompt": t}
         }
     }
 
@@ -99,8 +109,9 @@ def trigger_action(category, text, joint_angles):
         return
 
     try:
-        payload = action["payload"](text, joint_angles)
-        response = requests.post(action["url"], headers=action["headers"], json=payload, timeout=5)
+        payload = action["payload"](text)
+        response = requests.post(action["url"], headers=action["headers"], json=payload)
+        
         if response.status_code == 200:
             print(f"Request sent successfully for category: '{category}'")
             print(f"Response: {response.json()}")
@@ -129,6 +140,8 @@ def categorize_input(text):
                 "8. 'Hello, how are you today?' -> coherent_english\n"
                 "9. 'Blah blah goop goop' -> incoherent\n"
                 "10. 'Colorless green ideas sleep furiously.' -> incoherent"
+                "1. 'How does my form look?' -> fitness_form\n"
+        
             )
         },
         {
@@ -142,7 +155,7 @@ def categorize_input(text):
 
     try:
         completion = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-3.5-turbo",
             messages=messages,
             max_tokens=5,
             temperature=0.0,
@@ -150,13 +163,19 @@ def categorize_input(text):
         )
         response = completion.choices[0].message.content.strip().lower()
         
-        if response in CATEGORIES:
-            return response
-        else:
-            return None
+        return response if response in CATEGORIES else None
     except Exception as e:
         print(f"Error in categorization: {e}")
         return None
+
+def process_speech(full_text):
+    print(f"\nProcessing: {full_text}")
+    category = categorize_input(full_text)
+    if category in ["coherent_english", "fitness_form"]:
+        print(f"Category '{category}' detected!")
+        trigger_action(category, full_text)
+    else:
+        print("Input is incoherent or not relevant.")
 
 def keyword_detector(q, model_path="model"):
     if not os.path.exists(model_path):
@@ -171,17 +190,14 @@ def keyword_detector(q, model_path="model"):
     recognizer = KaldiRecognizer(model, RATE)
     recognizer.SetWords(True)
 
-    def get_current_joint_angles():
-        return {
-            "knee_angle": 130,
-            "back_angle": 170,
-            "hip_angle": 10
-        }
+    sliding_window = deque(maxlen=SLIDING_WINDOW_SIZE)
+    silence_start = None
+    last_process_time = time.time()
+    accumulated_text = ""
 
-    buffer = ""
     while True:
         if not q.empty():
-            data = q.get()
+            data, timestamp = q.get()
             if recognizer.AcceptWaveform(data):
                 try:
                     result = json.loads(recognizer.Result())
@@ -189,19 +205,16 @@ def keyword_detector(q, model_path="model"):
                         words = [word for word in result['result'] if word['conf'] >= MIN_CONFIDENCE_THRESHOLD]
                         if words:
                             text = ' '.join(word['word'] for word in words)
-                            buffer += text + " "
-                            
-                            # Check if we have a complete phrase
-                            if len(buffer.split()) >= MIN_PHRASE_LENGTH:
-                                print(f"\nRecognized: {buffer.strip()}")
-                                category = categorize_input(buffer.strip())
-                                if category in ["coherent_english", "fitness_form"]:
-                                    print(f"Category '{category}' detected!")
-                                    joint_angles = get_current_joint_angles()
-                                    trigger_action(category, buffer.strip(), joint_angles)
-                                else:
-                                    print("Input is incoherent or not relevant.")
-                                buffer = ""  # Reset buffer after processing
+                            sliding_window.append(text)
+                            accumulated_text += " " + text
+                            silence_start = None  # Reset silence start time
+                            last_process_time = timestamp  # Update last process time
+                        else:
+                            if silence_start is None:
+                                silence_start = timestamp
+                    else:
+                        if silence_start is None:
+                            silence_start = timestamp
                 except json.JSONDecodeError as e:
                     print(f"JSON decode error: {e}")
                 except Exception as e:
@@ -211,6 +224,24 @@ def keyword_detector(q, model_path="model"):
                 partial_text = partial.get("partial", "").strip()
                 if partial_text:
                     print(f"Partial: {partial_text}", end="\r")
+                elif silence_start is None:
+                    silence_start = timestamp
+
+            # Check for end of speech or timeout
+            current_time = time.time()
+            if silence_start and (current_time - silence_start >= END_OF_SPEECH_SILENCE_DURATION):
+                if accumulated_text.strip():
+                    process_speech(accumulated_text.strip())
+                    accumulated_text = ""
+                silence_start = None
+                last_process_time = current_time
+            elif current_time - last_process_time >= PROCESSING_TIMEOUT:
+                if accumulated_text.strip():
+                    process_speech(accumulated_text.strip())
+                    accumulated_text = ""
+                silence_start = None
+                last_process_time = current_time
+
         else:
             time.sleep(0.1)  # Prevent busy waiting
 

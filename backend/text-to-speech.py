@@ -33,7 +33,7 @@ class TextToSpeechAgent:
         self.audio_buffer = bytearray()
         self.executor = ThreadPoolExecutor(max_workers=2)
         self.prompt_queue = asyncio.Queue()
-        self.current_workout = "general fitness"
+        self.current_exercise = "squats"
 
     async def connect(self):
         headers = {
@@ -90,11 +90,11 @@ class TextToSpeechAgent:
             "type": "response.create",
             "response": {
                 "modalities": ["text", "audio"],
-                "instructions": f"You are a cheerful AI fitness coach. Your primary job is to encourage your client but also critique the form when needed. If you are prompted with something you should say, you should say something along those lines but also feel free to expand upon it and add your own twist. Keep responses pretty brief. You are currently coaching for {self.current_workout}. Do not respond to this instruction update.",
+                "instructions": f"You are a cheerful AI fitness coach. Your primary job is to encourage your client but also critique the form when needed. If you are prompted with something you should say, you should say something along those lines but also feel free to expand upon it and add your own twist. Keep responses pretty brief. You are currently coaching for {self.current_exercise}. Do not respond to this instruction update.",
             }
         }
         await self.send_event(event)
-        logger.info(f"Updated instructions for workout: {self.current_workout}")
+        logger.info(f"Updated instructions for workout: {self.current_exercise}")
 
     async def run(self):
         await self.connect()
@@ -106,11 +106,11 @@ class TextToSpeechAgent:
         try:
             while True:
                 prompt_data = await self.prompt_queue.get()
-                new_workout = prompt_data.get('workout')
+                new_exercise = prompt_data.get('exercise')
                 prompt_text = prompt_data.get('text')
 
-                if new_workout and new_workout != self.current_workout:
-                    self.current_workout = new_workout
+                if new_exercise and new_exercise != self.current_exercise:
+                    self.current_exercise = new_exercise
                     await self.update_instructions()
 
                 if prompt_text:
@@ -128,16 +128,16 @@ async def handle_prompt(request):
     try:
         data = await request.json()
         prompt = data.get('prompt')
-        workout = data.get('workout')
+        exercise = data.get('exercise')
         
-        if not prompt and not workout:
-            return web.Response(status=400, text="At least one of 'prompt' or 'workout' must be provided in JSON body")
+        if not prompt and not exercise:
+            return web.Response(status=400, text="At least one of 'prompt' or 'exercise' must be provided in JSON body")
         
         queue_item = {}
         if prompt:
             queue_item['text'] = prompt
-        if workout:
-            queue_item['workout'] = workout
+        if exercise:
+            queue_item['exercise'] = exercise
         
         await agent.prompt_queue.put(queue_item)
         return web.json_response({"status": "success", "message": "Request received"})
