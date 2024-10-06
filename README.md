@@ -29,5 +29,4 @@ Our team, passionate about fitness, saw an opportunity to build a tool that leve
 ### Audio Interface
 - **Vosk API**: Used for real-time speech recognition as a backup solution when OpenAI’s real-time API documentation was not fully available. It processes the audio commands from users and provides speech feedback.
 - **OpenAI Text-to-Speech API**: Planned future integration to replace Vosk and streamline audio interaction with lower latency and smoother operation.
-
-## Challenges
+  
