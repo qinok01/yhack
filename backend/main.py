@@ -170,29 +170,6 @@ def generate_frames(view_mode):
         img = detector.findPose(img)
         feedback, debug_info, per, bar = analyze_current_exercise(detector, img)
 
-        # Calculate progress bar dimensions and position
-        bar_width = 30
-        bar_max_height = img.shape[0] - 100
-        bar_current_height = int(bar_max_height * (per / 100))
-
-        # Adjust bar position based on view mode
-        if view_mode == 'split':
-            bar_x = img.shape[1] // 2 - bar_width - 20
-        else:  # full view
-            bar_x = img.shape[1] - bar_width - 20
-
-        # Display feedback and debug info
-        cv2.putText(img, feedback, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-        cv2.putText(img, debug_info, (10, img.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-
-        # Draw progress bar
-        if current_exercise in ['Squats', 'Pushups', 'Plank']:
-            cv2.rectangle(img, (bar_x, 50), (bar_x + bar_width, 50 + bar_max_height), (0, 255, 0), 3)
-            cv2.rectangle(img, (bar_x, 50 + bar_max_height - bar_current_height), 
-                          (bar_x + bar_width, 50 + bar_max_height), (0, 255, 0), cv2.FILLED)
-            cv2.putText(img, f'{int(per)}%', (bar_x, 40), 
-                        cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 2)
-
         # Send POST request every 50 seconds
         current_time = time.time()
         if current_time - last_request_time >= 40:
