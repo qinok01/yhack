@@ -8,19 +8,41 @@ const videos = [
     id: 1, 
     processed: '/processed_f_fivi_side_squats.mp4', 
     unprocessed: '/f_fivi_side_squats.mp4', 
-    label: 'Squats' 
+    label: 'Squats',
+    icon: (
+      <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none">
+        <path d="M7 17L12 22L17 17" />
+        <path d="M12 22L12 10" />
+        <circle cx="12" cy="6" r="4" />
+      </svg>
+    )
   },
   { 
     id: 2, 
     processed: '/processed_f_fivi_pushups.mp4', 
     unprocessed: '/f_fivi_pushups.mp4', 
-    label: 'Pushups' 
+    label: 'Pushups',
+    icon: (
+      <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none">
+        <path d="M4 18L20 18" />
+        <path d="M5 14L19 14" />
+        <circle cx="8" cy="9" r="3" />
+        <circle cx="16" cy="9" r="3" />
+      </svg>
+    )
   },
   { 
     id: 3, 
     processed: '/processed_f_fivi_plank.mp4', 
     unprocessed: '/f_fivi_plank.mp4', 
-    label: 'Plank' 
+    label: 'Plank',
+    icon: (
+      <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none">
+        <path d="M3 12H21" />
+        <path d="M6 7V17" />
+        <path d="M18 7V17" />
+      </svg>
+    )
   },
 ];
 
@@ -110,8 +132,9 @@ const ExercisePlayer = ({ isVisible }) => {
             key={video.id}
             className={`video-button ${index === currentVideoIndex ? 'active' : ''}`}
             onClick={() => switchVideo(index)}
+            aria-label={video.label}
           >
-            {video.id}
+            {video.icon}
           </button>
         ))}
       </div>
