@@ -185,10 +185,10 @@ def generate_frames(view_mode):
             cv2.putText(img, f'{int(per)}%', (bar_x, 40), 
                         cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 2)
 
-        # Send POST request every 30 seconds
+        # Send POST request every 50 seconds
         current_time = time.time()
-        if current_time - last_request_time >= 30:
-            prompt = f"The current exercise is: {current_exercise} The feedback for {current_exercise} is: {feedback}"
+        if current_time - last_request_time >= 40:
+            prompt = f"The current exercise is: {current_exercise} The feedback for {current_exercise} is: {feedback}. Take this and give helpful feedback but keep it breif."
             payload = {"prompt": prompt, "exercise": current_exercise}
             try:
                 response = requests.post('http://localhost:8080/prompt', 

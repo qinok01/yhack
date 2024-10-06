@@ -43,13 +43,13 @@ const PersonalTrainerLanding = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               <FeatureCard 
                 title="Realtime Feedback"
-                description="Instant Corrections and Support to maximize healthy living"
+                description="Instant Corrections and support to encourage healthy habits"
                 Icon={Heart}
                 iconColor="text-red-500"
               />
               <FeatureCard 
-                title="Video Fitness Plans"
-                description="Video walkthroughs of popular fitness routines"
+                title="Video Fitness Tutorials"
+                description="Video walkthroughs of popular exercises"
                 Icon={Play}
                 iconColor="text-blue-500"
               />
@@ -60,7 +60,7 @@ const PersonalTrainerLanding = () => {
                 iconColor="text-purple-500"
               />
               <FeatureCard 
-                title="Fitness Growth"
+                title="Steady Growth"
                 description="Achieve your goals in record time through an interactive fitness workflow"
                 Icon={BarChart2}
                 iconColor="text-green-500"
