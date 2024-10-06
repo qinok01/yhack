@@ -1,4 +1,4 @@
-# FiVi - The AI-Powered Physical Therapist
+# Fivi - The AI-Powered Physical Therapist
 
 ## Project Overview
 We developed an AI-powered personal trainer that provides real-time feedback on exercise form by using computer vision to analyze body movements. The project was built as a web app that runs on laptops equipped with webcams, allowing users to access personalized fitness coaching anywhere. This AI trainer helps correct users' form, provides actionable tips, and adapts workout difficulty based on user performance. Additionally, it includes an integrated voice-guidance system to make the interaction more intuitive and accessible.
