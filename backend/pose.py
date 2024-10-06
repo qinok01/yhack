@@ -32,8 +32,25 @@ class PoseDetector:
         
         if self.results.pose_landmarks:
             if draw:
-                self.mpDraw.draw_landmarks(img, self.results.pose_landmarks,
-                                           self.mpPose.POSE_CONNECTIONS)
+                # Draw connections
+                self.mpDraw.draw_landmarks(
+                    img, 
+                    self.results.pose_landmarks,
+                    self.mpPose.POSE_CONNECTIONS,
+                    landmark_drawing_spec=self.mpDraw.DrawingSpec(color=(0, 0, 0), thickness=1, circle_radius=1),
+                    connection_drawing_spec=self.mpDraw.DrawingSpec(color=(255, 255, 255), thickness=2)
+                )
+                
+                # Draw landmarks with custom style
+                for landmark in self.results.pose_landmarks.landmark:
+                    h, w, c = img.shape
+                    cx, cy = int(landmark.x * w), int(landmark.y * h)
+                    
+                    # Draw single red circle
+                    cv2.circle(img, (cx, cy), 10, (0, 0, 255), 2)
+                    
+                    # Draw inner neon green circle
+                    cv2.circle(img, (cx, cy), 5, (0, 255, 0), cv2.FILLED)
                 
         return img
     
@@ -45,7 +62,7 @@ class PoseDetector:
                 cx, cy = int(lm.x * w), int(lm.y * h)
                 self.lmList.append([id, cx, cy])
                 if draw:
-                    cv2.circle(img, (cx, cy), 5, (255,0,0), cv2.FILLED)
+                    cv2.circle(img, (cx, cy), 5, (255, 0, 0), cv2.FILLED)
         return self.lmList
         
     def findAngle(self, img, p1, p2, p3, draw=True):   
@@ -66,12 +83,13 @@ class PoseDetector:
             cv2.line(img, (x1, y1), (x2, y2), (255,255,255), 3)
             cv2.line(img, (x3, y3), (x2, y2), (255,255,255), 3)
             
-            cv2.circle(img, (x1, y1), 5, (0,0,255), cv2.FILLED)
-            cv2.circle(img, (x1, y1), 15, (0,0,255), 2)
-            cv2.circle(img, (x2, y2), 5, (0,0,255), cv2.FILLED)
-            cv2.circle(img, (x2, y2), 15, (0,0,255), 2)
-            cv2.circle(img, (x3, y3), 5, (0,0,255), cv2.FILLED)
-            cv2.circle(img, (x3, y3), 15, (0,0,255), 2)
+            # Increased circle sizes
+            cv2.circle(img, (x1, y1), 20, (0,0,255), cv2.FILLED)  
+            cv2.circle(img, (x1, y1), 60, (0,0,255), 2)  
+            cv2.circle(img, (x2, y2), 20, (0,0,255), cv2.FILLED)  
+            cv2.circle(img, (x2, y2), 60, (0,0,255), 2)  
+            cv2.circle(img, (x3, y3), 20, (0,0,255), cv2.FILLED) 
+            cv2.circle(img, (x3, y3), 60, (0,0,255), 2)  
             
             cv2.putText(img, str(int(angle)), (x2-50, y2+50), 
                         cv2.FONT_HERSHEY_PLAIN, 2, (0,0,255), 2)

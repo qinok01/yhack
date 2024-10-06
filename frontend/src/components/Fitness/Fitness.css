@@ -1,68 +1,205 @@
 .fitness-container {
-    width: 100%;
-    height: 100vh;
-    background-color: #f3f4f6;
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .content {
-    width: 100%;
-    height: 100%;
-    display: flex;
-  }
-  
+  width: 100%;
+  height: 100vh;
+  background-color: white;
+  position: relative;
+  overflow: hidden;
+  padding: 10px;
+}
+
+.content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  transition: all 0.33s ease-in-out;
+}
+
+.content.split {
+  flex-direction: row;
+}
+
+.content.video .webcam-stream,
+.content.webcam .exercise-player {
+  flex: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+.exercise-player,
+.webcam-stream {
+  flex: 1;
+  height: 100%;
+  position: relative;
+  transition: all 0.33s ease-in-out;
+  border-radius: 15px;
+  overflow: hidden;
+  border: 5px solid white;
+}
+
+.exercise-player {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.exercise-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.33s ease-in-out;
+  border-radius: 10px;
+}
+
+.exercise-video.active {
+  opacity: 1;
+}
+
+.exercise-video.current {
+  z-index: 1;
+}
+
+.exercise-video.fading-in {
+  opacity: 1;
+}
+
+.exercise-video.fading-out {
+  opacity: 0;
+}
+
+.webcam-stream img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.video-controls {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  z-index: 10;
+}
+
+.video-button {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background-color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.video-button.active {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.control-buttons {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  z-index: 10;
+}
+
+.control-button {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.control-button:hover {
+  background-color: #2563eb;
+}
+
+.processing-toggle {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background-color: white;
+  color: #3b82f6;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  z-index: 2;
+}
+
+.processing-toggle:hover {
+  background-color: #f0f0f0;
+}
+
+.processing-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.transitioning .content {
+  opacity: 0.5;
+}
+
+.loading, .error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.2rem;
+  color: white;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 1rem;
+  border-radius: 5px;
+}
+
+.error {
+  color: #ff6b6b;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Add some space between videos in split view */
+.content.split .exercise-player,
+.content.split .webcam-stream {
+  margin: 5px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
   .content.split {
-    flex-direction: row;
+    flex-direction: column;
   }
-  
-  .content.video .webcam-stream,
-  .content.webcam .video-player {
-    display: none;
+
+  .content.split .exercise-player,
+  .content.split .webcam-stream {
+    height: 50%;
   }
-  
-  .video-player,
-  .webcam-stream {
-    flex: 1;
-    height: 100%;
-  }
-  
-  .video-player video,
-  .webcam-stream img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  
-  .hidden {
-    display: none;
-  }
-  
-  .toggle-button {
-    position: absolute;
-    bottom: 1rem;
-    right: 1rem;
-    padding: 0.5rem;
-    background-color: #3b82f6;
-    color: white;
-    border: none;
-    border-radius: 9999px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
-  
-  .toggle-button:hover {
-    background-color: #2563eb;
-  }
-  
-  /* Responsive adjustments */
-  @media (max-width: 768px) {
-    .content.split {
-      flex-direction: column;
-    }
-  
-    .content.split .video-player,
-    .content.split .webcam-stream {
-      height: 50%;
-    }
-  }
+}
