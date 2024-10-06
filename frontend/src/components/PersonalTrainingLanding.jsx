@@ -7,8 +7,8 @@ import { Link } from 'react-router-dom';
 const PersonalTrainerLanding = () => {
   return (
     <div className="bg-customLightGray min-h-screen w-full flex flex-col mx-auto font-roboto">
-      <div className="flex-grow container mx-auto px-4 lg:px-8">
-        <main className="max-w-6xl mx-auto py-12">
+      <div className="flex-grow container mx-auto">
+        <main className="max-w-6xl mx-auto py-2">
         <NavBar />
           <div className="flex flex-col lg:flex-row items-center justify-between mb-20">
             <div className="lg:w-1/2 mb-12 lg:mb-0">
