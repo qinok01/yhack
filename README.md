@@ -37,22 +37,61 @@ We developed an AI-powered personal trainer that provides real-time feedback on 
   
 ### Audio Interface
 - **Vosk API**: Used for real-time speech recognition as a partial solution when OpenAI’s real-time API documentation was not fully available. It processes the audio commands from users and provides speech feedback.
-- **OpenAI Realtime API**: Provides human like responses and emotion to engage people in thier workouts.
+- **OpenAI Realtime API**: Provides human like responses and emotion to engage people in their workouts.
 
-##Installation
+## Installation
 
-# Clone the repository
+### Clone the repository
 git clone https://github.com/yourusername/fivi-ai-trainer.git
 
-# Navigate to the project directory
-cd fivi-ai-trainer
+### Navigate to the project directory
+cd yhack
 
-# Install backend dependencies
+### Install backend dependencies
+cd backend
 pip install -r requirements.txt
 
-# Install frontend dependencies
+### Install frontend dependencies
+cd ..
 cd frontend
 npm install
 
-# Return to the root directory
-cd ..
+### Run frontend
+npm run dev
+
+### Run backend servers
+cd .. 
+cd backend
+python main.py
+python query.py
+python find_keyword.py
+python text-to-speech.py
+
+### Open Web App
+Open your browser and navigate to http://localhost:5173
+Allow camera and microphone access when prompted
+Follow on-screen instructions to begin your AI-guided workout
+
+## Future Enhancements
+
+- Integrate OpenAI's real-time API for improved speech recognition and synthesis.
+- Expand exercise library with more complex movements and full workout routines.
+- Implement user accounts for progress tracking and personalized workout plans.
+- Develop mobile applications for iOS and Android platforms.
+
+## Contributing
+
+We welcome contributions to Fivi! Please follow these steps:
+
+1. Fork the repository.
+2. Create a new branch: `git checkout -b feature/your-feature-name`.
+3. Make your changes and commit them: `git commit -m 'Add some feature'`.
+4. Push to the branch: `git push origin feature/your-feature-name`.
+5. Submit a pull request.
+
+For major changes, please open an issue first to discuss what you would like to change.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+
