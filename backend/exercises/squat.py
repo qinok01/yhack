@@ -3,16 +3,16 @@ from time import time
 
 # Configuration
 STATE_THRESH = {
-    's1': 160,  # Standing straight
-    's2': (110, 150),  # Transition
-    's3': (70, 100)  # Squat position
+    's1': 150,  
+    's2': (90, 149),  
+    's3': (50, 89)  
 }
 FEEDBACK_THRESH = {
-    'bend_forward': 70,
-    'bend_backward': 100,
-    'lower_hips': (100, 140),
-    'knee_over_toes': 80,
-    'deep_squat': 60
+    'bend_forward': 100,  
+    'bend_backward': 173,  
+    'lower_hips': (70, 100),  
+    'knee_over_toes': 120,  
+    'deep_squat': 40  
 }
 INACTIVE_THRESH = 15  # Seconds
 
@@ -35,27 +35,25 @@ def get_state(hip_angle):
 
 def get_feedback(shoulder_angle, hip_angle, knee_angle, back_angle, current_state, prev_state):
     feedback = []
-    
+
     if back_angle < FEEDBACK_THRESH['bend_forward']:
         feedback.append("Bend forward slightly")
     elif back_angle > FEEDBACK_THRESH['bend_backward']:
         feedback.append("Lean back slightly")
-    
+
     if current_state == 's2' and prev_state == 's1':
         if FEEDBACK_THRESH['lower_hips'][0] <= hip_angle <= FEEDBACK_THRESH['lower_hips'][1]:
             feedback.append("Lower your hips more")
-    
-    if knee_angle > FEEDBACK_THRESH['knee_over_toes']:
-        feedback.append("Keep knees behind toes")
-    
+
+
     if current_state == 's3' and hip_angle < FEEDBACK_THRESH['deep_squat']:
         feedback.append("Squat is too deep")
-    
+
     return ". ".join(feedback)
 
 def analyze_squat(joint_angles):
     global correct_count, incorrect_count, state_sequence, last_active_time, last_feedback_time
-    
+
     left_hip_angle = joint_angles['left_hip_angle']
     right_hip_angle = joint_angles['right_hip_angle']
     left_knee_angle = joint_angles['left_knee_angle']
@@ -68,7 +66,7 @@ def analyze_squat(joint_angles):
 
     # Get current state
     current_state = get_state(hip_angle)
-    
+
     # Update state sequence
     if current_state != 'unknown':
         if not state_sequence or current_state != state_sequence[-1]:
@@ -77,8 +75,8 @@ def analyze_squat(joint_angles):
             state_sequence.pop(0)
 
     # Count reps and reset state sequence
-    if current_state == 's1' and len(state_sequence) == 3:
-        if state_sequence == ['s2', 's3', 's2']:
+    if current_state == 's1' and len(state_sequence) >= 2:
+        if 's3' in state_sequence:
             correct_count += 1
         else:
             incorrect_count += 1
@@ -107,6 +105,8 @@ def analyze_squat(joint_angles):
     # Throttle feedback
     if current_time - last_feedback_time > FEEDBACK_COOLDOWN and feedback:
         last_feedback_time = current_time
+        print(f"Back Angle: {back_angle:.2f}")
+        print(f"Knee Angle: {knee_angle:.2f}")
         return f"Rep count: {correct_count} (Incorrect: {incorrect_count}). {feedback}", debug_info, per, bar
     else:
         return "", debug_info, per, bar

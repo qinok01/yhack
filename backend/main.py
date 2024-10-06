@@ -97,7 +97,7 @@ def analyze_current_exercise(detector, img):
             feedback, debug_info, per, bar = analyze_plank(joint_angles)
         else:
             feedback, debug_info, per, bar = "Select an exercise.", "", 0, 0
-        
+
         if feedback:
             print(f"Exercise Feedback: {feedback}")
         return feedback, debug_info, per, bar
@@ -113,37 +113,37 @@ def generate_frames(view_mode):
             break
         img = detector.findPose(img)
         feedback, debug_info, per, bar = analyze_current_exercise(detector, img)
-        
+
         # Calculate progress bar dimensions and position
         bar_width = 30
         bar_max_height = img.shape[0] - 100  # Leave some space at top and bottom
         bar_current_height = int(bar_max_height * (per / 100))
-        
+
         # Adjust bar position based on view mode
         if view_mode == 'split':
             bar_x = img.shape[1] // 2 - bar_width - 20  # 20 pixels padding from center
         else:  # full view
             bar_x = img.shape[1] - bar_width - 20  # 20 pixels padding from right edge
-        
+
         # Display feedback
         cv2.putText(img, feedback, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-        
+
         # Display debug info
         cv2.putText(img, debug_info, (10, img.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-        
+
         # Draw progress bar
         if current_exercise in ['Squats', 'Pushups', 'Plank']:
             # Draw the background of the progress bar
             cv2.rectangle(img, (bar_x, 50), (bar_x + bar_width, 50 + bar_max_height), (0, 255, 0), 3)
-            
+
             # Draw the filled part of the progress bar
             cv2.rectangle(img, (bar_x, 50 + bar_max_height - bar_current_height), 
                           (bar_x + bar_width, 50 + bar_max_height), (0, 255, 0), cv2.FILLED)
-            
+
             # Display the percentage
             cv2.putText(img, f'{int(per)}%', (bar_x, 40), 
                         cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 2)
-        
+
         ret, buffer = cv2.imencode('.jpg', img)
         frame = buffer.tobytes()
         yield (b'--frame\r\n'
