@@ -1,31 +1,123 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Maximize2, Minimize2 } from 'lucide-react';
+import { Maximize2, Minimize2, Home, Repeat } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import './Fitness.css';
 
-const VideoPlayer = ({ isVisible }) => {
-  const videoRef = useRef(null);
+const videos = [
+  { 
+    id: 1, 
+    processed: '/processed_f_fivi_side_squats.mp4', 
+    unprocessed: '/f_fivi_side_squats.mp4', 
+    label: 'Squats' 
+  },
+  { 
+    id: 2, 
+    processed: '/processed_f_fivi_pushups.mp4', 
+    unprocessed: '/f_fivi_pushups.mp4', 
+    label: 'Pushups' 
+  },
+  { 
+    id: 3, 
+    processed: '/processed_f_fivi_plank.mp4', 
+    unprocessed: '/f_fivi_plank.mp4', 
+    label: 'Plank' 
+  },
+];
+
+const ExercisePlayer = ({ isVisible }) => {
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const [fadingTo, setFadingTo] = useState(null);
+  const [isProcessed, setIsProcessed] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const videoRefs = useRef(videos.map(() => ({
+    processed: React.createRef(),
+    unprocessed: React.createRef()
+  })));
 
   useEffect(() => {
-    if (videoRef.current) {
-      if (isVisible) {
-        videoRef.current.play().catch(error => {
-          console.error("Error attempting to play video:", error);
-        });
-      } else {
-        videoRef.current.pause();
-      }
+    if (isVisible) {
+      const currentVideo = videoRefs.current[currentVideoIndex][isProcessed ? 'processed' : 'unprocessed'].current;
+      currentVideo.play().catch(error => {
+        console.error("Error attempting to play video:", error);
+      });
     }
-  }, [isVisible]);
+  }, [isVisible, currentVideoIndex, isProcessed]);
+
+  const handleVideoEnd = () => {
+    setFadingTo((currentVideoIndex + 1) % videos.length);
+    setTimeout(() => {
+      setCurrentVideoIndex((currentVideoIndex + 1) % videos.length);
+      setFadingTo(null);
+    }, 330);
+  };
+
+  const switchVideo = (index) => {
+    if (index !== currentVideoIndex) {
+      setFadingTo(index);
+      setTimeout(() => {
+        setCurrentVideoIndex(index);
+        setFadingTo(null);
+      }, 330);
+    }
+  };
+
+  const toggleProcessing = () => {
+    setIsTransitioning(true);
+    const currentVideo = videoRefs.current[currentVideoIndex][isProcessed ? 'processed' : 'unprocessed'].current;
+    const targetVideo = videoRefs.current[currentVideoIndex][!isProcessed ? 'processed' : 'unprocessed'].current;
+    
+    targetVideo.currentTime = currentVideo.currentTime;
+    targetVideo.play().then(() => {
+      setIsProcessed(!isProcessed);
+      setTimeout(() => {
+        setIsTransitioning(false);
+      }, 330);
+    }).catch(error => {
+      console.error("Error playing target video:", error);
+      setIsTransitioning(false);
+    });
+  };
 
   return (
-    <div className={`video-player ${isVisible ? '' : 'hidden'}`}>
-      <video
-        ref={videoRef}
-        src="/fitness_video.mp4"
-        muted
-        loop
-        playsInline
-      />
+    <div className={`exercise-player ${isVisible ? '' : 'hidden'}`}>
+      {videos.map((video, index) => (
+        <React.Fragment key={video.id}>
+          <video
+            ref={videoRefs.current[index].processed}
+            src={video.processed}
+            className={`exercise-video ${isProcessed ? 'active' : ''} ${index === currentVideoIndex ? 'current' : ''} ${fadingTo === index ? 'fading-in' : ''} ${fadingTo !== null && index === currentVideoIndex ? 'fading-out' : ''} ${isTransitioning && isProcessed ? 'fading-out' : ''} ${isTransitioning && !isProcessed ? 'fading-in' : ''}`}
+            muted
+            loop
+            playsInline
+            onEnded={handleVideoEnd}
+            onError={(e) => console.error("Video error:", e)}
+          />
+          <video
+            ref={videoRefs.current[index].unprocessed}
+            src={video.unprocessed}
+            className={`exercise-video ${!isProcessed ? 'active' : ''} ${index === currentVideoIndex ? 'current' : ''} ${fadingTo === index ? 'fading-in' : ''} ${fadingTo !== null && index === currentVideoIndex ? 'fading-out' : ''} ${isTransitioning && !isProcessed ? 'fading-out' : ''} ${isTransitioning && isProcessed ? 'fading-in' : ''}`}
+            muted
+            loop
+            playsInline
+            onEnded={handleVideoEnd}
+            onError={(e) => console.error("Video error:", e)}
+          />
+        </React.Fragment>
+      ))}
+      <div className="video-controls">
+        {videos.map((video, index) => (
+          <button
+            key={video.id}
+            className={`video-button ${index === currentVideoIndex ? 'active' : ''}`}
+            onClick={() => switchVideo(index)}
+          >
+            {video.id}
+          </button>
+        ))}
+      </div>
+      <button onClick={toggleProcessing} className="processing-toggle" disabled={isTransitioning}>
+        <Repeat size={24} />
+      </button>
     </div>
   );
 };
@@ -41,40 +133,53 @@ const WebcamStream = ({ isVisible }) => {
   );
 };
 
-const ToggleButton = ({ onClick, isFullScreen }) => {
+const ControlButton = ({ onClick, icon: Icon }) => {
   return (
     <button
       onClick={onClick}
-      className="toggle-button"
+      className="control-button"
     >
-      {isFullScreen ? <Minimize2 size={24} /> : <Maximize2 size={24} />}
+      <Icon size={24} />
     </button>
   );
 };
 
 const Fitness = () => {
   const [view, setView] = useState('split');
+  const [transitioning, setTransitioning] = useState(false);
+  const navigate = useNavigate();
 
   const toggleView = () => {
-    if (view === 'split') {
-      setView('video');
-    } else if (view === 'video') {
-      setView('webcam');
-    } else {
-      setView('split');
-    }
+    setTransitioning(true);
+    setTimeout(() => {
+      if (view === 'split') {
+        setView('video');
+      } else if (view === 'video') {
+        setView('webcam');
+      } else {
+        setView('split');
+      }
+      setTransitioning(false);
+    }, 330);
+  };
+
+  const goHome = () => {
+    navigate('/');
   };
 
   const isVideoVisible = view === 'split' || view === 'video';
   const isWebcamVisible = view === 'split' || view === 'webcam';
 
   return (
-    <div className="fitness-container">
+    <div className={`fitness-container ${transitioning ? 'transitioning' : ''}`}>
       <div className={`content ${view}`}>
-        <VideoPlayer isVisible={isVideoVisible} />
+        <ExercisePlayer isVisible={isVideoVisible} />
         <WebcamStream isVisible={isWebcamVisible} />
       </div>
-      <ToggleButton onClick={toggleView} isFullScreen={view !== 'split'} />
+      <div className="control-buttons">
+        <ControlButton onClick={goHome} icon={Home} />
+        <ControlButton onClick={toggleView} icon={view !== 'split' ? Maximize2 : Minimize2} />
+      </div>
     </div>
   );
 };
