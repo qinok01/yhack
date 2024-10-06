@@ -33,6 +33,7 @@ class TextToSpeechAgent:
         self.audio_buffer = bytearray()
         self.executor = ThreadPoolExecutor(max_workers=2)
         self.prompt_queue = asyncio.Queue()
+        self.current_workout = "general fitness"
 
     async def connect(self):
         headers = {
@@ -84,24 +85,38 @@ class TextToSpeechAgent:
         await self.send_event(event)
         await self.send_event({"type": "response.create"})
 
+    async def update_instructions(self):
+        event = {
+            "type": "response.create",
+            "response": {
+                "modalities": ["text", "audio"],
+                "instructions": f"You are a cheerful AI fitness coach. Your primary job is to encourage your client but also critique the form when needed. If you are prompted with something you should say, you should say something along those lines but also feel free to expand upon it and add your own twist. Keep responses pretty brief. You are currently coaching for {self.current_workout}. Do not respond to this instruction update.",
+            }
+        }
+        await self.send_event(event)
+        logger.info(f"Updated instructions for workout: {self.current_workout}")
+
     async def run(self):
         await self.connect()
         receive_task = asyncio.create_task(self.receive_events())
         
-        await self.send_event({
-            "type": "response.create",
-            "response": {
-                "modalities": ["text", "audio"],
-                "instructions": "You are a cheerful AI fitness coach. Your primary job is to encourage your client but also critque the form when needed. If you are prompted with something you should say, you should say something along those lines but also feel free to exapnd upon it and add your own twist. Keep Responses relatively brief",
-            }
-        })
+        # Initial instructions
+        await self.update_instructions()
         
         try:
             while True:
-                text = await self.prompt_queue.get()
-                if text.lower() == 'q':
-                    break
-                await self.send_text(text)
+                prompt_data = await self.prompt_queue.get()
+                new_workout = prompt_data.get('workout')
+                prompt_text = prompt_data.get('text')
+
+                if new_workout and new_workout != self.current_workout:
+                    self.current_workout = new_workout
+                    await self.update_instructions()
+
+                if prompt_text:
+                    if prompt_text.lower() == 'q':
+                        break
+                    await self.send_text(prompt_text)
         except Exception as e:
             logger.error(f"An error occurred: {e}")
         finally:
@@ -113,10 +128,19 @@ async def handle_prompt(request):
     try:
         data = await request.json()
         prompt = data.get('prompt')
-        if not prompt:
-            return web.Response(status=400, text="Missing 'prompt' in JSON body")
-        await agent.prompt_queue.put(prompt)
-        return web.json_response({"status": "success", "message": "Prompt received"})
+        workout = data.get('workout')
+        
+        if not prompt and not workout:
+            return web.Response(status=400, text="At least one of 'prompt' or 'workout' must be provided in JSON body")
+        
+        queue_item = {}
+        if prompt:
+            queue_item['text'] = prompt
+        if workout:
+            queue_item['workout'] = workout
+        
+        await agent.prompt_queue.put(queue_item)
+        return web.json_response({"status": "success", "message": "Request received"})
     except json.JSONDecodeError:
         return web.Response(status=400, text="Invalid JSON")
 
