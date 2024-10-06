@@ -79,9 +79,10 @@
 
 .video-controls {
   position: absolute;
-  bottom: 1rem;
+  top: 1rem;
   left: 1rem;
   display: flex;
+  flex-direction: column;
   gap: 0.5rem;
   z-index: 10;
 }
@@ -105,7 +106,6 @@
   background-color: #3b82f6;
   color: white; 
 }
-
 
 .video-button .icon {
   width: 24px;
@@ -148,7 +148,7 @@
 .processing-toggle {
   position: absolute;
   bottom: 1rem;
-  right: 1rem;
+  left: 1rem;
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 50%;
@@ -161,7 +161,7 @@
   justify-content: center;
   transition: background-color 0.3s ease;
   box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  z-index: 2;
+  z-index: 10;
 }
 
 .processing-toggle:hover {

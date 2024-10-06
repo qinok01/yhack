@@ -62,7 +62,7 @@ const ExercisePlayer = ({ isVisible }) => {
       const selectedExercise = videos[index].label;
   
       // Send a request to the backend to update the current exercise
-      fetch('http://localhost:5005/current_exercise', {
+      fetch('http://localhost:5001/current_exercise', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -160,11 +160,11 @@ const ExercisePlayer = ({ isVisible }) => {
   );
 };
 
-const WebcamStream = ({ isVisible, viewMode }) => {
+const WebcamStream = ({ isVisible, currentExercise }) => {
   return (
     <div className={`webcam-stream ${isVisible ? '' : 'hidden'}`}>
       <img 
-        src={`http://localhost:5001/video_feed/${viewMode}`}
+        src={`http://localhost:5001/video_feed?exercise=${currentExercise}`}
         alt="Pose Detection Stream"
       />
     </div>
@@ -185,6 +185,7 @@ const ControlButton = ({ onClick, icon: Icon }) => {
 const Fitness = () => {
   const [view, setView] = useState('split');
   const [transitioning, setTransitioning] = useState(false);
+  const [currentExercise, setCurrentExercise] = useState('Squats');
   const navigate = useNavigate();
 
   const toggleView = () => {
@@ -212,7 +213,7 @@ const Fitness = () => {
     <div className={`fitness-container ${transitioning ? 'transitioning' : ''}`}>
       <div className={`content ${view}`}>
         <ExercisePlayer isVisible={isVideoVisible} />
-        <WebcamStream isVisible={isWebcamVisible} />
+        <WebcamStream isVisible={isWebcamVisible} currentExercise={currentExercise} />
       </div>
       <div className="control-buttons">
         <ControlButton onClick={goHome} icon={Home} />

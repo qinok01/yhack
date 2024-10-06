@@ -3,19 +3,22 @@ import mediapipe as mp
 from flask_cors import CORS
 import cv2
 import math
-from exercises.squat import analyze_squat
-from exercises.pushup import analyze_pushup
-from exercises.plank import analyze_plank
+import numpy as np
+import os
 import requests
-import json
-import time
+from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
 # Configuration
 SERVER_PORT = 5001
-current_exercise = 'Squats'  # Default exercise
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+TTS_SERVER_URL = 'http://localhost:8080/prompt'
+openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 class PoseDetector:
     def __init__(self):
@@ -79,154 +82,95 @@ def get_joint_angles(detector, img):
     return {
         'left_shoulder_angle': detector.findAngle(img, 13, 11, 23, draw=False),
         'right_shoulder_angle': detector.findAngle(img, 14, 12, 24, draw=False),
-        'left_hip_angle_squat': detector.findAngle(img, 11, 23, 25, draw=False),
-        'right_hip_angle_squat': detector.findAngle(img, 12, 24, 26, draw=False),
+        'left_hip_angle': detector.findAngle(img, 11, 23, 25, draw=False),
+        'right_hip_angle': detector.findAngle(img, 12, 24, 26, draw=False),
         'left_knee_angle': detector.findAngle(img, 23, 25, 27, draw=False),
         'right_knee_angle': detector.findAngle(img, 24, 26, 28, draw=False),
         'left_ankle_angle': detector.findAngle(img, 25, 27, 31, draw=False),
         'right_ankle_angle': detector.findAngle(img, 26, 28, 32, draw=False),
-        'back_angle': detector.findAngle(img, 7, 11, 23, draw=False),  # Using left side for back angle
+        'back_angle': detector.findAngle(img, 7, 11, 23, draw=False),
         'left_elbow_angle': detector.findAngle(img, 11, 13, 15, draw=False),
         'right_elbow_angle': detector.findAngle(img, 12, 14, 16, draw=False),
         'left_hand_to_shoulder_angle': detector.findAngle(img, 15, 13, 11, draw=False),
         'right_hand_to_shoulder_angle': detector.findAngle(img, 16, 14, 12, draw=False),
-        # Hip angles for pushups
-        'left_hip_angle_pushup': detector.findAngle(img, 11, 23, 27, draw=False),
-        'right_hip_angle_pushup': detector.findAngle(img, 12, 24, 28, draw=False)
     }
 
+def analyze_pose(joint_angles, exercise):
+    # Prepare the prompt for OpenAI
+    prompt = f"""
+    Analyze the following joint angles for a {exercise} exercise:
+    {joint_angles}
 
-def analyze_current_exercise(detector, img):
-    global current_exercise
+    Provide a brief feedback on the form, highlighting:
+    1. What the person is doing correctly
+    2. Any issues with their form
+    3. Specific suggestions for improvement
+
+    Keep the response concise and actionable, suitable for real-time audio feedback.
+    """
+
+    # Send to OpenAI for analysis
+    response = openai_client.chat.completions.create(
+        model="gpt-4-1106-preview",
+        messages=[
+            {"role": "system", "content": "You are a fitness expert providing real-time feedback on exercise form."},
+            {"role": "user", "content": prompt}
+        ],
+        max_tokens=150  # Adjust as needed for concise responses
+    )
+
+    feedback = response.choices[0].message.content.strip()
+    return feedback, exercise
+
+def send_to_tts(feedback, exercise):
     try:
-        joint_angles = get_joint_angles(detector, img)
-        if current_exercise == 'Squats':
-            feedback, debug_info, per, bar = analyze_squat(joint_angles)
-        elif current_exercise == 'Pushups':
-            feedback, debug_info, per, bar = analyze_pushup(joint_angles)
-        elif current_exercise == 'Plank':
-            feedback, debug_info, per, bar = analyze_plank(joint_angles)
+        response = requests.post(TTS_SERVER_URL, json={
+            'prompt': feedback,
+            'exercise': exercise
+        })
+        if response.status_code == 200:
+            print("Feedback sent to text-to-speech server")
         else:
-            feedback, debug_info, per, bar = "Select an exercise.", "", 0, 0
+            print(f"Failed to send feedback to text-to-speech server. Status code: {response.status_code}")
+    except requests.RequestException as e:
+        print(f"Error sending feedback to text-to-speech server: {e}")
 
-        if feedback:
-            print(f"Exercise Feedback: {feedback}")
-        return feedback, debug_info, per, bar
-    except ValueError:
-        return "No pose detected.", "", 0, 0
+@app.route('/analyze', methods=['POST'])
+def analyze_exercise():
+    data = request.json
+    joint_angles = data.get('joint_angles', {})
+    exercise = data.get('exercise', 'unknown')
+    
+    feedback, exercise = analyze_pose(joint_angles, exercise)
+    send_to_tts(feedback, exercise)
+    
+    return jsonify({"feedback": feedback})
 
-# Global variables for video capture and pose detector
-cap = None
-detector = None
-
-def initialize_capture():
-    global cap, detector
-    if cap is None:
-        cap = cv2.VideoCapture(0)
-    if detector is None:
+@app.route('/video_feed')
+def video_feed():
+    exercise = request.args.get('exercise', 'Squats')  # Get exercise from query parameter
+    def generate_frames():
         detector = PoseDetector()
+        cap = cv2.VideoCapture(0)
+        while True:
+            success, frame = cap.read()
+            if not success:
+                break
+            else:
+                frame = detector.findPose(frame)
+                ret, buffer = cv2.imencode('.jpg', frame)
+                frame = buffer.tobytes()
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
-@app.route('/start_capture', methods=['POST'])
-def start_capture():
-    global current_exercise, cap, detector
-    try:
-        initialize_capture()
-        
-        data = request.json
-        user_query = data.get('user_query', '')
-
-        # Capture a frame from the video feed
-        success, img = cap.read()
-        if not success:
-            return jsonify({"error": "Failed to capture video frame"}), 500
-
-        img = detector.findPose(img)
-        payload = {
-            "joint_angles": get_joint_angles(detector, img),
-            "user_query": user_query
-        }
-        
-        try:
-            response = requests.post('http://localhost:5005/analyze', headers={"Content-Type": "application/json"}, json=payload)
-            response.raise_for_status()
-            print("Payload sent to endpoint:")
-            print(json.dumps(payload, indent=4))
-            return jsonify(response.json())
-        except requests.RequestException as e:
-            return jsonify({"error": f"Failed to send data to analysis endpoint: {str(e)}"}), 500
-    except Exception as e:
-        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
-
-def generate_frames(view_mode):
-    global cap, detector
-    initialize_capture()
-    
-    last_request_time = time.time()
-    
-    while True:
-        success, img = cap.read()
-        if not success:
-            break
-        img = detector.findPose(img)
-        feedback, debug_info, per, bar = analyze_current_exercise(detector, img)
-
-        # Calculate progress bar dimensions and position
-        bar_width = 30
-        bar_max_height = img.shape[0] - 100
-        bar_current_height = int(bar_max_height * (per / 100))
-
-        # Adjust bar position based on view mode
-        if view_mode == 'split':
-            bar_x = img.shape[1] // 2 - bar_width - 20
-        else:  # full view
-            bar_x = img.shape[1] - bar_width - 20
-
-        # Display feedback and debug info
-        cv2.putText(img, feedback, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-        cv2.putText(img, debug_info, (10, img.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-
-        # Draw progress bar
-        if current_exercise in ['Squats', 'Pushups', 'Plank']:
-            cv2.rectangle(img, (bar_x, 50), (bar_x + bar_width, 50 + bar_max_height), (0, 255, 0), 3)
-            cv2.rectangle(img, (bar_x, 50 + bar_max_height - bar_current_height), 
-                          (bar_x + bar_width, 50 + bar_max_height), (0, 255, 0), cv2.FILLED)
-            cv2.putText(img, f'{int(per)}%', (bar_x, 40), 
-                        cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 2)
-
-        # Send POST request every 30 seconds
-        current_time = time.time()
-        if current_time - last_request_time >= 30:
-            prompt = f"The current exercise is: {current_exercise} The feedback for {current_exercise} is: {feedback}"
-            payload = {"prompt": prompt, "exercise": current_exercise}
-            try:
-                response = requests.post('http://localhost:8080/prompt', 
-                                         headers={"Content-Type": "application/json"}, 
-                                         json=payload, 
-                                         timeout=5)  # 5 seconds timeout
-                response.raise_for_status()
-                print(f"Sent POST request to 8080/prompt: {payload}")
-            except requests.RequestException as e:
-                print(f"Failed to send POST request: {str(e)}")
-            
-            last_request_time = current_time
-
-        ret, buffer = cv2.imencode('.jpg', img)
-        frame = buffer.tobytes()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
-@app.route('/video_feed/<view_mode>')
-def video_feed(view_mode):
-    if view_mode not in ['split', 'video', 'webcam']:
-        view_mode = 'split'  # Default to 'split' if invalid view_mode is provided
-    return Response(generate_frames(view_mode), mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(generate_frames(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/current_exercise', methods=['POST'])
 def current_exercise_route():
-    global current_exercise
-    current_exercise = request.json.get('exercise', 'Squats')
-    print(f"Exercise changed to: {current_exercise}")  # Console log the exercise change
-    return jsonify({"message": "Exercise updated", "current_exercise": current_exercise}), 200
+    exercise = request.json.get('exercise', 'Squats')
+    print(f"Exercise changed to: {exercise}")
+    return jsonify({"message": "Exercise updated", "current_exercise": exercise}), 200
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=SERVER_PORT, debug=True)
