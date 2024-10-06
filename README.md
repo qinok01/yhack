@@ -39,6 +39,9 @@ We developed an AI-powered personal trainer that provides real-time feedback on 
 - **Vosk API**: Used for real-time speech recognition as a partial solution when OpenAI’s real-time API documentation was not fully available. It processes the audio commands from users and provides speech feedback.
 - **OpenAI Realtime API**: Provides human like responses and emotion to engage people in their workouts.
 
+## High Level Architecture
+![FIVI-09](https://github.com/user-attachments/assets/5d8450fb-737d-4488-be8b-668ffba0ba74)
+
 ## Installation
 
 ### Clone the repository
