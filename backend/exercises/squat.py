@@ -9,7 +9,7 @@ STATE_THRESH = {
 }
 FEEDBACK_THRESH = {
     'bend_forward': 100,  
-    'bend_backward': 173,  
+    'bend_backward': 178,  
     'lower_hips': (70, 100),  
     'knee_over_toes': 120,  
     'deep_squat': 40  
@@ -54,14 +54,14 @@ def get_feedback(shoulder_angle, hip_angle, knee_angle, back_angle, current_stat
 def analyze_squat(joint_angles):
     global correct_count, incorrect_count, state_sequence, last_active_time, last_feedback_time
 
-    left_hip_angle = joint_angles['left_hip_angle']
-    right_hip_angle = joint_angles['right_hip_angle']
+    left_hip_angle_squat = joint_angles['left_hip_angle_squat']
+    right_hip_angle_squat = joint_angles['right_hip_angle_squat']
     left_knee_angle = joint_angles['left_knee_angle']
     right_knee_angle = joint_angles['right_knee_angle']
     back_angle = joint_angles['back_angle']
 
     # Use average of left and right for symmetry
-    hip_angle = (left_hip_angle + right_hip_angle) / 2
+    hip_angle = (left_hip_angle_squat + right_hip_angle_squat) / 2
     knee_angle = (left_knee_angle + right_knee_angle) / 2
 
     # Get current state

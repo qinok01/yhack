@@ -70,20 +70,28 @@ class PoseDetector:
         return angle
 
 def get_joint_angles(detector, img):
-    lmList = detector.findPosition(img)
-    if not lmList:
+    lmDict = detector.findPosition(img)
+    if not lmDict:
         raise ValueError("No pose detected")
     return {
         'left_shoulder_angle': detector.findAngle(img, 13, 11, 23, draw=False),
         'right_shoulder_angle': detector.findAngle(img, 14, 12, 24, draw=False),
-        'left_hip_angle': detector.findAngle(img, 11, 23, 25, draw=False),
-        'right_hip_angle': detector.findAngle(img, 12, 24, 26, draw=False),
+        'left_hip_angle_squat': detector.findAngle(img, 11, 23, 25, draw=False),
+        'right_hip_angle_squat': detector.findAngle(img, 12, 24, 26, draw=False),
         'left_knee_angle': detector.findAngle(img, 23, 25, 27, draw=False),
         'right_knee_angle': detector.findAngle(img, 24, 26, 28, draw=False),
         'left_ankle_angle': detector.findAngle(img, 25, 27, 31, draw=False),
         'right_ankle_angle': detector.findAngle(img, 26, 28, 32, draw=False),
         'back_angle': detector.findAngle(img, 7, 11, 23, draw=False),  # Using left side for back angle
+        'left_elbow_angle': detector.findAngle(img, 11, 13, 15, draw=False),
+        'right_elbow_angle': detector.findAngle(img, 12, 14, 16, draw=False),
+        'left_hand_to_shoulder_angle': detector.findAngle(img, 15, 13, 11, draw=False),
+        'right_hand_to_shoulder_angle': detector.findAngle(img, 16, 14, 12, draw=False),
+        # Hip angles for pushups
+        'left_hip_angle_pushup': detector.findAngle(img, 11, 23, 27, draw=False),
+        'right_hip_angle_pushup': detector.findAngle(img, 12, 24, 28, draw=False)
     }
+
 
 def analyze_current_exercise(detector, img):
     global current_exercise
@@ -114,46 +122,18 @@ def generate_frames(view_mode):
         img = detector.findPose(img)
         feedback, debug_info, per, bar = analyze_current_exercise(detector, img)
 
-        # Calculate progress bar dimensions and position
-        bar_width = 30
-        bar_max_height = img.shape[0] - 100  # Leave some space at top and bottom
-        bar_current_height = int(bar_max_height * (per / 100))
-
-        # Adjust bar position based on view mode
-        if view_mode == 'split':
-            bar_x = img.shape[1] // 2 - bar_width - 20  # 20 pixels padding from center
-        else:  # full view
-            bar_x = img.shape[1] - bar_width - 20  # 20 pixels padding from right edge
-
-        # Display feedback
-        cv2.putText(img, feedback, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-
-        # Display debug info
-        cv2.putText(img, debug_info, (10, img.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-
-        # Draw progress bar
-        if current_exercise in ['Squats', 'Pushups', 'Plank']:
-            # Draw the background of the progress bar
-            cv2.rectangle(img, (bar_x, 50), (bar_x + bar_width, 50 + bar_max_height), (0, 255, 0), 3)
-
-            # Draw the filled part of the progress bar
-            cv2.rectangle(img, (bar_x, 50 + bar_max_height - bar_current_height), 
-                          (bar_x + bar_width, 50 + bar_max_height), (0, 255, 0), cv2.FILLED)
-
-            # Display the percentage
-            cv2.putText(img, f'{int(per)}%', (bar_x, 40), 
-                        cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 2)
-
         ret, buffer = cv2.imencode('.jpg', img)
         frame = buffer.tobytes()
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 # Update the video_feed route to accept view_mode
+@app.route('/video_feed', defaults={'view_mode': 'split'})
 @app.route('/video_feed/<view_mode>')
 def video_feed(view_mode):
+    if view_mode not in ['split', 'video', 'webcam']:
+        view_mode = 'split'  # Default to 'split' if invalid view_mode is provided
     return Response(generate_frames(view_mode), mimetype='multipart/x-mixed-replace; boundary=frame')
-
 
 @app.route('/current_exercise', methods=['POST'])
 def current_exercise_route():
