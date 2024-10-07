@@ -45,30 +45,42 @@ We developed an AI-powered personal trainer that provides real-time feedback on 
 ## Installation
 
 ### Clone the repository
-git clone https://github.com/yourusername/fivi-ai-trainer.git
+```bash
+$ git clone https://github.com/yourusername/fivi-ai-trainer.git
+```
 
 ### Navigate to the project directory
-cd yhack
+```bash
+$ cd yhack
+```
 
 ### Install backend dependencies
-cd backend
-pip install -r requirements.txt
+```bash
+$ cd backend
+$ pip install -r requirements.txt
+```
 
 ### Install frontend dependencies
-cd ..
-cd frontend
-npm install
+```bash
+$ cd ..
+$ cd frontend
+$ npm install
+```
 
 ### Run frontend
-npm run dev
+```bash
+$ npm run dev
+```
 
 ### Run backend servers
-- cd .. 
-- cd backend
-- python main.py
-- python query.py
-- python find_keyword.py
-- python realtime.py
+```bash
+$ cd .. 
+$ cd backend
+$ python main.py
+$ python query.py
+$ python find_keyword.py
+$ python realtime.py
+```
 
 ### Open Web App
 - Open your browser and navigate to http://localhost:5173
