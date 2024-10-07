@@ -140,7 +140,8 @@ def categorize_input(text):
                 "8. 'Hello, how are you today?' -> coherent_english\n"
                 "9. 'Blah blah goop goop' -> incoherent\n"
                 "10. 'Colorless green ideas sleep furiously.' -> incoherent"
-                "1. 'How does my form look?' -> fitness_form\n"
+                "11. 'How does my form look?' -> fitness_form\n"
+                "12. 'Are my Squats good?' -> fitness_form\n"
         
             )
         },
